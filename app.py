@@ -123,6 +123,27 @@ def load_user(user_id):
 # Database initialization removed from import time
 # Tables will be created via /api/migrate endpoint or manually
 
+# Diagnostic endpoint for debugging
+@app.route('/api/health')
+def health_check():
+    """Health check endpoint to diagnose deployment issues"""
+    info = {
+        'status': 'ok',
+        'vercel': os.environ.get('VERCEL', 'false'),
+        'has_database_url': bool(os.environ.get('DATABASE_URL')),
+        'has_secret_key': bool(os.environ.get('SECRET_KEY')),
+        'database_uri_set': bool(app.config.get('SQLALCHEMY_DATABASE_URI')),
+    }
+    try:
+        # Try to connect to database
+        with app.app_context():
+            db.engine.connect()
+            info['database_connection'] = 'ok'
+    except Exception as e:
+        info['database_connection'] = f'error: {str(e)}'
+        info['status'] = 'error'
+    return jsonify(info), 200
+
 # Authentication Routes
 @app.route('/login', methods=['GET', 'POST'])
 def login():
