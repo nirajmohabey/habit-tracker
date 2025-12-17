@@ -13,7 +13,13 @@ import uuid
 app = Flask(__name__)
 
 # Configuration - direct configuration (simplified for Vercel)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+# Generate SECRET_KEY if not provided (required for sessions)
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    # Generate a temporary key (will be different on each restart, but app won't crash)
+    SECRET_KEY = secrets.token_hex(32)
+    print("WARNING: SECRET_KEY not set in environment. Using temporary key.")
+app.config['SECRET_KEY'] = SECRET_KEY
 
 # Database configuration - supports both SQLite (local) and PostgreSQL (production)
 DATABASE_URL = os.environ.get('DATABASE_URL')
@@ -22,9 +28,11 @@ if DATABASE_URL:
     if DATABASE_URL.startswith('postgres://'):
         DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+    print(f"✓ Database URL configured (PostgreSQL)")
 else:
     # SQLite (local development)
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///habit_tracker.db'
+    print("✓ Database URL configured (SQLite - local dev)")
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', 'False').lower() == 'true'
@@ -37,6 +45,20 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Please log in to access this page.'
+
+# Global error handler
+@app.errorhandler(Exception)
+def handle_exception(e):
+    """Handle all unhandled exceptions gracefully"""
+    import traceback
+    error_msg = str(e)
+    traceback_str = traceback.format_exc()
+    print(f"ERROR: {error_msg}")
+    print(traceback_str)
+    return jsonify({
+        'error': 'Internal server error',
+        'message': error_msg if os.environ.get('FLASK_ENV') == 'development' else 'An error occurred'
+    }), 500
 
 # UUID Type for SQLite compatibility
 class GUID(TypeDecorator):
@@ -133,15 +155,18 @@ def health_check():
         'has_database_url': bool(os.environ.get('DATABASE_URL')),
         'has_secret_key': bool(os.environ.get('SECRET_KEY')),
         'database_uri_set': bool(app.config.get('SQLALCHEMY_DATABASE_URI')),
+        'database_uri_preview': app.config.get('SQLALCHEMY_DATABASE_URI', '')[:50] + '...' if app.config.get('SQLALCHEMY_DATABASE_URI') else 'not set',
     }
     try:
         # Try to connect to database
         with app.app_context():
-            db.engine.connect()
+            conn = db.engine.connect()
+            conn.close()
             info['database_connection'] = 'ok'
     except Exception as e:
         info['database_connection'] = f'error: {str(e)}'
         info['status'] = 'error'
+        info['error_details'] = str(e)
     return jsonify(info), 200
 
 # Authentication Routes
