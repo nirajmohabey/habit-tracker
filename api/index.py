@@ -12,9 +12,9 @@ os.environ['VERCEL'] = '1'
 # Import Flask app with error handling
 try:
     from app import app
-    print("✓ Flask app imported successfully")
+    print("Flask app imported successfully")
 except Exception as e:
-    print(f"✗ Error importing Flask app: {e}")
+    print(f"Error importing Flask app: {e}")
     import traceback
     traceback.print_exc()
     # Create a minimal error app

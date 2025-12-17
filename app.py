@@ -28,11 +28,11 @@ if DATABASE_URL:
     if DATABASE_URL.startswith('postgres://'):
         DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
     app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
-    print(f"✓ Database URL configured (PostgreSQL)")
+    print("Database URL configured (PostgreSQL)")
 else:
     # SQLite (local development)
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///habit_tracker.db'
-    print("✓ Database URL configured (SQLite - local dev)")
+    print("Database URL configured (SQLite - local dev)")
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', 'False').lower() == 'true'
