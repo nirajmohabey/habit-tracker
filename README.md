@@ -32,31 +32,18 @@ A production-ready habit tracking web application with secure authentication, re
 
 4. **Create account:** Sign up on the login page
 
-### Deploy to Vercel
+### Production Deployment
 
-1. **Set up database (Supabase - Free):**
-   - Go to https://supabase.com
-   - Create project → Copy connection string
+**Already Deployed!** ✅
 
-2. **Push to GitHub:**
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit"
-   git remote add origin https://github.com/YOUR_USERNAME/habit-tracker.git
-   git push -u origin main
-   ```
+- **Database**: Supabase (PostgreSQL)
+- **Hosting**: Vercel
+- **Status**: Live and running
 
-3. **Deploy to Vercel:**
-   - Go to https://vercel.com
-   - Import GitHub repository
-   - Add environment variables:
-     - `DATABASE_URL` = (your Supabase connection string)
-     - `SECRET_KEY` = (generate: `python -c "import secrets; print(secrets.token_hex(32))"`)
-   - Deploy!
-
-4. **Initialize database:**
-   - Visit: `https://your-app.vercel.app/api/migrate`
+To update:
+1. Make changes locally
+2. `git push origin main`
+3. Vercel auto-deploys
 
 ## Project Structure
 
