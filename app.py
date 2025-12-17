@@ -120,15 +120,8 @@ def load_user(user_id):
     except (ValueError, TypeError):
         return None
 
-# Initialize database (only if not in serverless environment)
-# Skip auto-creation in Vercel to avoid connection errors on import
-if not os.environ.get('VERCEL'):
-    try:
-        with app.app_context():
-            db.create_all()
-    except Exception:
-        # Silently fail if database not available (e.g., during import)
-        pass
+# Database initialization removed from import time
+# Tables will be created via /api/migrate endpoint or manually
 
 # Authentication Routes
 @app.route('/login', methods=['GET', 'POST'])
