@@ -1,23 +1,16 @@
+# Vercel serverless function for Flask app
 import sys
 import os
 
-# Mark as Vercel environment
+# Add project root to path
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
+
+# Set Vercel environment flag
 os.environ['VERCEL'] = '1'
 
-# Add project root to Python path
-project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
 # Import Flask app
-try:
-    from app import app
-except Exception as e:
-    # Log error for debugging
-    import traceback
-    print(f"Error importing app: {e}")
-    print(traceback.format_exc())
-    raise
+from app import app
 
-# Vercel Python runtime automatically handles Flask apps
-# Just export the app - @vercel/python will wrap it
+# Vercel Python runtime expects the app to be exported
+# The @vercel/python builder handles WSGI automatically

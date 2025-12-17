@@ -466,5 +466,6 @@ def migrate_database():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-if __name__ == '__main__':
+# Only run development server if not in Vercel
+if __name__ == '__main__' and not os.environ.get('VERCEL'):
     app.run(debug=True, host='0.0.0.0', port=5000)
