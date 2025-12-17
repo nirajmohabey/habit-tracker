@@ -12,11 +12,11 @@ import uuid
 
 app = Flask(__name__)
 
-# Use configuration from backend/config.py
+# Configuration - supports both backend/config.py and direct config
 try:
     from backend.config import get_config
     app.config.from_object(get_config())
-except ImportError:
+except (ImportError, Exception):
     # Fallback to direct configuration if backend/config.py not available
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
     
@@ -125,9 +125,15 @@ def load_user(user_id):
     except (ValueError, TypeError):
         return None
 
-# Initialize database
-with app.app_context():
-    db.create_all()
+# Initialize database (only if not in serverless environment)
+# Skip auto-creation in Vercel to avoid connection errors on import
+if not os.environ.get('VERCEL'):
+    try:
+        with app.app_context():
+            db.create_all()
+    except Exception:
+        # Silently fail if database not available (e.g., during import)
+        pass
 
 # Authentication Routes
 @app.route('/login', methods=['GET', 'POST'])
