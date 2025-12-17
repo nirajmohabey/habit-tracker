@@ -2,6 +2,8 @@
 
 A production-ready habit tracking web application with secure authentication, real-time sync, and beautiful UI.
 
+> **Status**: Ready for deployment
+
 ## Features
 
 - 🔐 **Secure Authentication** - User signup/login with password hashing
