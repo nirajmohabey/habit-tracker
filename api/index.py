@@ -12,10 +12,5 @@ sys.path.insert(0, project_root)
 
 from app import app
 
-# Vercel Python runtime expects the app to be callable
-def handler(request):
-    """Vercel serverless handler"""
-    return app(request.environ, request.start_response)
-
-# Also export app directly for compatibility
-__all__ = ['app', 'handler']
+# Vercel Python runtime - export the Flask app directly
+# The @vercel/python builder will handle the WSGI interface
