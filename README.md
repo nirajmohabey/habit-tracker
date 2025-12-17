@@ -2,9 +2,6 @@
 
 A production-ready habit tracking web application with secure authentication, real-time sync, and beautiful UI.
 
-**Live Demo**: [Coming soon - Deploy to Vercel]  
-**Author**: [Niraj Mohabey](https://github.com/nirajmohabey)
-
 ## Features
 
 - 🔐 **Secure Authentication** - User signup/login with password hashing
