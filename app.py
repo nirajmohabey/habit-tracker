@@ -12,30 +12,25 @@ import uuid
 
 app = Flask(__name__)
 
-# Configuration - supports both backend/config.py and direct config
-try:
-    from backend.config import get_config
-    app.config.from_object(get_config())
-except (ImportError, Exception):
-    # Fallback to direct configuration if backend/config.py not available
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
-    
-    # Database configuration - supports both SQLite (local) and PostgreSQL (production)
-    DATABASE_URL = os.environ.get('DATABASE_URL')
-    if DATABASE_URL:
-        # PostgreSQL (production - Vercel)
-        if DATABASE_URL.startswith('postgres://'):
-            DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
-        app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
-    else:
-        # SQLite (local development)
-        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///habit_tracker.db'
-    
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', 'False').lower() == 'true'
-    app.config['SESSION_COOKIE_HTTPONLY'] = True
-    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-    app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
+# Configuration - direct configuration (simplified for Vercel)
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+
+# Database configuration - supports both SQLite (local) and PostgreSQL (production)
+DATABASE_URL = os.environ.get('DATABASE_URL')
+if DATABASE_URL:
+    # PostgreSQL (production - Vercel)
+    if DATABASE_URL.startswith('postgres://'):
+        DATABASE_URL = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+else:
+    # SQLite (local development)
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///habit_tracker.db'
+
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', 'False').lower() == 'true'
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
 
 db = SQLAlchemy(app)
 login_manager = LoginManager()
