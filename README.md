@@ -36,6 +36,20 @@ A full-stack habit tracking application built with Angular 21 frontend and Flask
    # Or use curl: curl http://localhost:5000/api/migrate
    ```
 
+5. **Seed Database with Demo User** (Recommended for testing)
+   ```bash
+   python seed_database.py
+   ```
+   This creates a demo user with sample habits and 30 days of sample data:
+   - **Username:** `demo`
+   - **Password:** `demo123`
+   - **Email:** `demo@example.com`
+   
+   The demo user includes:
+   - 6 sample habits (Wake up at 7AM, No Snoozing, Drink 3L Water, Gym Workout, Study 1 Hour, Meditation)
+   - 30 days of sample habit logs (mix of completed and missed days)
+   - Ready to test all features immediately!
+
 ## 🏃 Running the Application
 
 You need to run **both** the backend and frontend servers simultaneously.
@@ -71,6 +85,23 @@ npm start
 ### Option 3: Using npm scripts (if configured)
 
 You can create a script to run both, but for now, use two terminals.
+
+## 🧪 Testing with Demo User
+
+After seeding the database, you can immediately test the application:
+
+1. **Start both servers** (backend and frontend)
+2. **Navigate to** `http://localhost:4200`
+3. **Login with demo credentials:**
+   - Username: `demo`
+   - Password: `demo123`
+4. **Explore the features:**
+   - View 30 days of sample habit data
+   - See completed and missed days
+   - Test dashboard, settings, and all features
+   - Add new habits or modify existing ones
+
+> **Note:** The demo user has sample data from the past 30 days, so you can see how the app works with real data patterns.
 
 ## 🌐 Access the Application
 
