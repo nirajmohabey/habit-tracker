@@ -1,0 +1,52 @@
+<div class="tab-content" style="display: block; overflow: hidden;">
+  <div class="settings-container">
+    <div class="settings-section">
+      <h2>Preferences</h2>
+      <div class="settings-options">
+        <div class="setting-item">
+          <label>
+            <input 
+              type="checkbox" 
+              [(ngModel)]="autoMarkMissed"
+              (change)="onAutoMarkChange()"
+              id="auto-mark-missed">
+            <span>Auto-mark missed days</span>
+          </label>
+          <p class="setting-desc">Automatically mark past days as missed if not completed</p>
+        </div>
+        <div class="setting-item">
+          <label>
+            <input 
+              type="checkbox" 
+              [(ngModel)]="notificationsEnabled"
+              (change)="onNotificationsChange()"
+              id="notifications-enabled">
+            <span>Enable notifications</span>
+          </label>
+          <p class="setting-desc">Get reminders to track your habits</p>
+        </div>
+        <div class="setting-item">
+          <label>
+            <span>Theme</span>
+            <select 
+              [(ngModel)]="theme"
+              (change)="onThemeChange()"
+              id="theme-select">
+              <option value="dark">Dark</option>
+              <option value="light">Light</option>
+            </select>
+          </label>
+        </div>
+      </div>
+    </div>
+    
+    <div class="settings-section">
+      <h2>Account</h2>
+      <div class="account-info">
+        <p><strong>Username:</strong> <span id="account-username">{{ accountInfo.username || 'N/A' }}</span></p>
+        <p><strong>Email:</strong> <span id="account-email">{{ accountInfo.email || 'N/A' }}</span></p>
+        <p><strong>Member since:</strong> <span id="account-created">{{ getFormattedDate(accountInfo.created_at) }}</span></p>
+      </div>
+    </div>
+  </div>
+</div>

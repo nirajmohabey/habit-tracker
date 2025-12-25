@@ -1,0 +1,79 @@
+<div class="tab-content" style="display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden;">
+  <div class="loading-overlay" [class.active]="isLoading">
+    <div class="spinner"></div>
+    <p>Loading dashboard...</p>
+  </div>
+  
+  <div class="dashboard-grid">
+    <div class="dashboard-section">
+      <h2>Badges</h2>
+      <div class="badges-container">
+        <p *ngIf="!badges || badges.badges.length === 0" style="color: var(--text-secondary);">
+          No badges yet. Keep tracking to earn badges!
+        </p>
+        <div *ngFor="let badge of badges?.badges" class="badge-item">
+          <span class="badge-icon">{{ badge.name.split(' ')[0] }}</span>
+          <div>
+            <div class="badge-name">{{ badge.name }}</div>
+            <div class="badge-desc">{{ badge.description }}</div>
+          </div>
+        </div>
+        <div *ngIf="badges" class="badge-overall">
+          <div class="badge-stats">
+            <span>{{ badges.total_completed }} / {{ badges.total_goal }} completed</span>
+            <span class="badge-percentage">{{ badges.percentage }}%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="dashboard-section">
+      <h2>AI Insights</h2>
+      <div class="insights-container">
+        <p *ngIf="!insights || insights.insights.length === 0" style="color: var(--text-secondary);">
+          No insights available yet.
+        </p>
+        <div *ngFor="let insight of insights?.insights" class="insight-item insight-{{ insight.type }}">
+          <span class="insight-icon">{{ insight.icon }}</span>
+          <span class="insight-message">{{ insight.message }}</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="dashboard-section">
+      <h2>Category Summary</h2>
+      <canvas #categoryChart id="category-chart"></canvas>
+    </div>
+    
+    <div class="dashboard-section full-width monthly-heatmap-card">
+      <h2>Monthly Heatmap</h2>
+      <div class="heatmap-container">
+        <p *ngIf="!stats || stats.habits.length === 0" style="color: var(--text-secondary);">
+          No habits to display heatmap.
+        </p>
+        <div class="heatmap-grid">
+          <div *ngFor="let habit of getHabitsForHeatmap()" class="heatmap-row">
+          <div class="heatmap-label">
+            <span>{{ habit.emoji || '✅' }}</span> {{ habit.name }}
+          </div>
+          <div class="heatmap-days">
+            <div
+              *ngFor="let day of getDaysArray()"
+              [ngClass]="getHeatmapDayClass(habit.habit_id, day)"
+              class="heatmap-day"
+              [attr.data-date]="getDateString(day)"
+              [attr.data-habit-id]="habit.habit_id"
+              [title]="getDateString(day)">
+              {{ day }}
+            </div>
+          </div>
+          <div class="heatmap-percentage">
+            <span class="percentage-value">{{ getHeatmapPercentage(habit.habit_id).percentage }}%</span>
+            <span class="percentage-detail">{{ getHeatmapPercentage(habit.habit_id).completed }}/{{ getHeatmapPercentage(habit.habit_id).total }}</span>
+          </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

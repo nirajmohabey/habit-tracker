@@ -1,117 +1,231 @@
-# Habit Tracker - Consistency Over Excuses
+# Weekly Tracker - Habit Tracking Application
 
-A production-ready habit tracking web application with secure authentication, real-time sync, and beautiful UI.
+A full-stack habit tracking application built with Angular 21 frontend and Flask backend.
 
-> **Status**: Ready for deployment
+## 🚀 Quick Start
 
-## Features
+### Prerequisites
 
-- 🔐 **Secure Authentication** - User signup/login with password hashing
-- 🔒 **Data Isolation** - Each user's data is completely private
-- ✅ **Daily Habit Tracker** - Monthly calendar view with checkboxes
-- 📊 **Progress Dashboard** - Charts and completion stats
-- 📈 **Category Summary** - Track by category (Fitness, Health, etc.)
-- 🎯 **Goal Setting** - Monthly goals for each habit
-- 📱 **Cross-Platform** - Works on all devices, installable as PWA
-- 🔄 **Real-Time Sync** - Auto-sync across devices
-- 🎨 **Modern UI** - Dark theme with smooth animations
+- **Python 3.8+** (for backend)
+- **Node.js 18+** and **npm** (for frontend)
+- **SQLite** (included with Python) or **PostgreSQL** (for production)
 
-## Quick Start
+### Installation
 
-### Local Development
+1. **Clone the repository** (if not already done)
+   ```bash
+   cd Weekly_Tracker
+   ```
 
-1. **Install dependencies:**
+2. **Install Backend Dependencies**
    ```bash
    pip install -r requirements.txt
    ```
 
-2. **Run the app:**
+3. **Install Frontend Dependencies**
+   ```bash
+   cd frontend
+   npm install
+   cd ..
+   ```
+
+4. **Initialize Database** (First time only)
    ```bash
    python app.py
+   # Then visit http://localhost:5000/api/migrate in your browser
+   # Or use curl: curl http://localhost:5000/api/migrate
    ```
 
-3. **Access:** `http://localhost:5000`
+## 🏃 Running the Application
 
-4. **Create account:** Sign up on the login page
+You need to run **both** the backend and frontend servers simultaneously.
 
-### Deploy to Vercel
+### Option 1: Two Terminal Windows (Recommended)
 
-1. **Set up database (Supabase - Free):**
-   - Go to https://supabase.com
-   - Create project → Copy connection string
+**Terminal 1 - Backend (Flask):**
+```bash
+python app.py
+```
+Backend will run on: `http://localhost:5000`
 
-2. **Push to GitHub:**
-   ```bash
-   git init
-   git add .
-   git commit -m "Initial commit"
-   git remote add origin https://github.com/YOUR_USERNAME/habit-tracker.git
-   git push -u origin main
-   ```
+**Terminal 2 - Frontend (Angular):**
+```bash
+cd frontend
+npm start
+```
+Frontend will run on: `http://localhost:4200`
 
-3. **Deploy to Vercel:**
-   - Go to https://vercel.com
-   - Import GitHub repository
-   - Add environment variables:
-     - `DATABASE_URL` = (your Supabase connection string)
-     - `SECRET_KEY` = (generate: `python -c "import secrets; print(secrets.token_hex(32))"`)
-   - Deploy!
+### Option 2: PowerShell (Windows)
 
-4. **Initialize database:**
-   - Visit: `https://your-app.vercel.app/api/migrate`
+**Terminal 1:**
+```powershell
+python app.py
+```
 
-## Project Structure
+**Terminal 2:**
+```powershell
+cd frontend
+npm start
+```
+
+### Option 3: Using npm scripts (if configured)
+
+You can create a script to run both, but for now, use two terminals.
+
+## 🌐 Access the Application
+
+Once both servers are running:
+- **Frontend**: Open your browser and go to `http://localhost:4200`
+- **Backend API**: Available at `http://localhost:5000/api`
+
+## 📝 First Time Setup
+
+1. **Start both servers** (see above)
+
+2. **Create database tables** (if not done during installation):
+   - Visit: `http://localhost:5000/api/migrate`
+   - Or use curl: `curl http://localhost:5000/api/migrate`
+
+3. **Sign up for an account**:
+   - Go to `http://localhost:4200`
+   - Click "Sign Up"
+   - Create your account
+   - Default habits will be created automatically
+
+4. **Start tracking your habits!**
+
+## 🔧 Configuration
+
+### Backend Configuration
+
+Environment variables (optional):
+- `SECRET_KEY`: Flask session secret key (auto-generated if not set)
+- `DATABASE_URL`: PostgreSQL connection string (uses SQLite if not set)
+- `SESSION_COOKIE_SECURE`: Set to `true` for HTTPS (default: `false` for localhost)
+- `CORS_ORIGINS`: Comma-separated list of allowed origins (default: localhost URLs)
+
+### Frontend Configuration
+
+Edit `frontend/src/environments/environment.ts`:
+```typescript
+export const environment = {
+  production: false,
+  apiUrl: 'http://localhost:5000/api'  // Change if backend runs on different port
+};
+```
+
+## 🛠️ Development
+
+### Backend Development
+- Backend runs with debug mode enabled by default
+- Auto-reloads on file changes
+- Logs are printed to console
+
+### Frontend Development
+- Angular dev server with hot-reload
+- Open `http://localhost:4200` in browser
+- Changes automatically reload
+
+### Building for Production
+
+**Frontend:**
+```bash
+cd frontend
+npm run build
+```
+Output will be in `frontend/dist/`
+
+**Backend:**
+- Set environment variables for production
+- Use a production WSGI server (e.g., Gunicorn)
+- Configure PostgreSQL database
+
+## 📁 Project Structure
 
 ```
 Weekly_Tracker/
-├── app.py                 # Main Flask application
-├── api/
-│   └── index.py          # Vercel serverless entry point
-├── templates/            # HTML templates
-├── static/               # CSS, JS, assets
-├── scripts/
-│   └── migrate_db.py     # Database migration script
-├── requirements.txt      # Python dependencies
-├── requirements-vercel.txt  # Production dependencies
-├── vercel.json           # Vercel configuration
-└── .gitignore           # Git ignore rules
+├── app.py                 # Flask backend application
+├── requirements.txt       # Python dependencies
+├── instance/              # SQLite database (created automatically)
+│   └── habit_tracker.db
+├── frontend/              # Angular frontend
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── components/    # Angular components
+│   │   │   ├── services/      # API and auth services
+│   │   │   └── app.routes.ts   # Routing configuration
+│   │   └── environments/      # Environment configuration
+│   └── package.json
+└── README.md
 ```
 
-## Database
+## 🐛 Troubleshooting
 
-- **Local Development:** SQLite (`habit_tracker.db`)
-- **Production:** PostgreSQL (Supabase/Railway/Neon)
-- **Auto-detection:** Uses `DATABASE_URL` environment variable if set
+### Backend Issues
 
-## Environment Variables
+**Port 5000 already in use:**
+- Change port in `app.py`: `app.run(debug=True, host='0.0.0.0', port=5001)`
+- Update frontend `environment.ts` to match
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `DATABASE_URL` | PostgreSQL connection string | Production only |
-| `SECRET_KEY` | Flask secret key | Yes |
-| `FLASK_ENV` | Environment (development/production) | Optional |
+**Database errors:**
+- Delete `instance/habit_tracker.db` and run `/api/migrate` again
+- Check database permissions
 
-## Tech Stack
+**CORS errors:**
+- Ensure `CORS_ORIGINS` includes your frontend URL
+- Check that `supports_credentials=True` is set
 
-- **Backend:** Flask (Python)
-- **Database:** SQLite (local) / PostgreSQL (production)
-- **Frontend:** HTML, CSS, JavaScript
-- **Charts:** Chart.js
-- **Deployment:** Vercel
-- **Database Hosting:** Supabase (recommended)
+### Frontend Issues
 
-## Security Features
+**Port 4200 already in use:**
+- Angular CLI will prompt to use a different port
+- Or specify: `ng serve --port 4201`
 
-- Password hashing (PBKDF2)
-- Session management
-- User data isolation
-- SQL injection protection (SQLAlchemy ORM)
-- UUID-based IDs
+**API connection errors:**
+- Verify backend is running on port 5000
+- Check `environment.ts` has correct API URL
+- Check browser console for CORS errors
 
-## License
+**Module not found errors:**
+- Run `npm install` again in `frontend/` directory
+- Delete `node_modules` and `package-lock.json`, then reinstall
 
-Personal use - modify and customize as needed.
+## 📚 API Endpoints
 
----
+- `GET /api/health` - Health check
+- `GET /api/check-auth` - Check authentication status
+- `POST /login` - User login
+- `POST /signup` - User registration
+- `GET /logout` - User logout
+- `GET /api/habits` - Get all habits
+- `POST /api/habits` - Create habit
+- `PUT /api/habits/<id>` - Update habit
+- `DELETE /api/habits/<id>` - Delete habit
+- `GET /api/logs` - Get habit logs
+- `POST /api/logs` - Toggle habit log
+- `GET /api/stats` - Get statistics
+- `GET /api/daily-logs` - Get daily logs
+- `POST /api/auto-mark-missed` - Auto-mark missed days
+- `GET /api/badges` - Get badges
+- `GET /api/insights` - Get AI insights
 
-**Remember**: This year you're choosing CONSISTENCY over excuses! 💪
+## 🚢 Deployment
+
+### Vercel (Backend)
+- Configure environment variables in Vercel dashboard
+- Set `DATABASE_URL` for PostgreSQL
+- Set `SECRET_KEY` for sessions
+- Deploy using Vercel CLI or GitHub integration
+
+### Frontend Deployment
+- Build: `npm run build` in `frontend/` directory
+- Deploy `dist/` folder to your hosting service
+- Update `environment.prod.ts` with production API URL
+
+## 📄 License
+
+This project is open source and available for personal use.
+
+## 🤝 Support
+
+For issues or questions, check the code comments or create an issue in the repository.

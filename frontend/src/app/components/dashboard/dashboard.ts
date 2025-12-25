@@ -1,0 +1,266 @@
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit, ChangeDetectorRef } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
+import { ApiService, Stats, BadgesResponse, InsightsResponse, DailyLogs } from '../../services/api';
+import { ToastService } from '../../services/toast.service';
+
+declare var Chart: any;
+
+@Component({
+  selector: 'app-dashboard',
+  standalone: true,
+  imports: [CommonModule],
+  templateUrl: './dashboard.html',
+  styleUrl: './dashboard.css',
+})
+export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
+  @ViewChild('categoryChart', { static: false }) categoryChartRef!: ElementRef<HTMLCanvasElement>;
+  
+  isLoading = false;
+  stats: Stats | null = null;
+  badges: BadgesResponse | null = null;
+  insights: InsightsResponse | null = null;
+  heatmapData: DailyLogs = {};
+  currentDate = new Date();
+  categoryChart: any = null;
+
+  constructor(
+    private apiService: ApiService,
+    private toastService: ToastService,
+    private router: Router,
+    private cdr: ChangeDetectorRef
+  ) {}
+
+  ngOnInit() {
+    this.loadDashboard();
+  }
+
+  ngAfterViewInit() {
+    // Chart will be rendered after data loads
+  }
+
+  ngOnDestroy() {
+    if (this.categoryChart) {
+      this.categoryChart.destroy();
+    }
+  }
+
+  async loadDashboard() {
+    this.isLoading = true;
+    try {
+      await Promise.all([
+        this.loadStats(),
+        this.loadBadges(),
+        this.loadInsights(),
+        this.loadHeatmap()
+      ]);
+    } catch (error) {
+      console.error('Error loading dashboard:', error);
+      this.toastService.error('Error', 'Failed to load dashboard');
+    } finally {
+      this.isLoading = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  async loadStats() {
+    try {
+      this.stats = await this.apiService.getStats().toPromise() || null;
+      // Render chart immediately if view is ready, otherwise wait
+      if (this.stats && this.categoryChartRef) {
+        this.renderCategoryChart();
+      } else {
+        // Small delay only if view not ready
+        setTimeout(() => {
+          if (this.stats && this.categoryChartRef) {
+            this.renderCategoryChart();
+          }
+        }, 50); // Reduced from 100ms
+      }
+    } catch (error: any) {
+      console.error('Error loading stats:', error);
+      if (error.status === 401) {
+        this.toastService.warning('Session Expired', 'Please log in again');
+        setTimeout(() => {
+          this.router.navigate(['/login']);
+        }, 300);
+      } else if (error.status >= 500) {
+        this.toastService.error('Server Error', 'Please try again later');
+      }
+    }
+  }
+
+  async loadBadges() {
+    try {
+      this.badges = await this.apiService.getBadges().toPromise() || null;
+    } catch (error) {
+      console.error('Error loading badges:', error);
+    }
+  }
+
+  async loadInsights() {
+    try {
+      this.insights = await this.apiService.getInsights().toPromise() || null;
+    } catch (error) {
+      console.error('Error loading insights:', error);
+    }
+  }
+
+  async loadHeatmap() {
+    const year = this.currentDate.getFullYear();
+    const month = this.currentDate.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const endDate = `${year}-${String(month + 1).padStart(2, '0')}-${daysInMonth}`;
+
+    try {
+      this.heatmapData = await this.apiService.getDailyLogs(startDate, endDate).toPromise() || {};
+    } catch (error) {
+      console.error('Error loading heatmap:', error);
+    }
+  }
+
+  renderCategoryChart() {
+    if (!this.stats || !this.categoryChartRef) return;
+
+    const ctx = this.categoryChartRef.nativeElement.getContext('2d');
+    if (!ctx) return;
+
+    if (this.categoryChart) {
+      this.categoryChart.destroy();
+    }
+
+    this.categoryChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: this.stats.categories.map(c => c.category),
+        datasets: [{
+          label: 'Completed',
+          data: this.stats.categories.map(c => c.completed),
+          backgroundColor: [
+            'rgba(168, 85, 247, 0.8)',
+            'rgba(20, 184, 166, 0.8)',
+            'rgba(236, 72, 153, 0.8)',
+            'rgba(59, 130, 246, 0.8)',
+            'rgba(16, 185, 129, 0.8)',
+            'rgba(245, 158, 11, 0.8)',
+          ],
+          borderColor: [
+            'rgba(168, 85, 247, 1)',
+            'rgba(20, 184, 166, 1)',
+            'rgba(236, 72, 153, 1)',
+            'rgba(59, 130, 246, 1)',
+            'rgba(16, 185, 129, 1)',
+            'rgba(245, 158, 11, 1)',
+          ],
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              color: '#b0b0b0',
+              font: { size: 10 }
+            },
+            grid: {
+              color: '#333333'
+            }
+          },
+          x: {
+            ticks: {
+              color: '#b0b0b0',
+              font: { size: 10 }
+            },
+            grid: {
+              color: '#333333'
+            }
+          }
+        }
+      }
+    });
+  }
+
+  getDaysInMonth(): number {
+    const year = this.currentDate.getFullYear();
+    const month = this.currentDate.getMonth();
+    return new Date(year, month + 1, 0).getDate();
+  }
+
+  getDateString(day: number): string {
+    const year = this.currentDate.getFullYear();
+    const month = this.currentDate.getMonth();
+    return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+
+  getHeatmapDayClass(habitId: string, day: number): string {
+    const dateStr = this.getDateString(day);
+    const classes: string[] = ['heatmap-day'];
+
+    if (this.heatmapData[dateStr] && this.heatmapData[dateStr][habitId] === true) {
+      classes.push('heatmap-completed');
+    } else if (this.heatmapData[dateStr] && this.heatmapData[dateStr][habitId] === false) {
+      classes.push('heatmap-missed');
+    } else {
+      const year = this.currentDate.getFullYear();
+      const month = this.currentDate.getMonth();
+      const dayDate = new Date(year, month, day);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (dayDate < today) {
+        classes.push('heatmap-missed');
+      } else {
+        classes.push('heatmap-empty');
+      }
+    }
+
+    return classes.join(' ');
+  }
+
+  getHeatmapPercentage(habitId: string): { percentage: number; completed: number; total: number } {
+    const year = this.currentDate.getFullYear();
+    const month = this.currentDate.getMonth();
+    const daysInMonth = this.getDaysInMonth();
+    const today = new Date();
+    const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+    let completedCount = 0;
+    let daysPassed = 0;
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = this.getDateString(day);
+      const cellDate = new Date(year, month, day);
+
+      if (cellDate <= todayDate) {
+        daysPassed++;
+        if (this.heatmapData[dateStr] && this.heatmapData[dateStr][habitId] === true) {
+          completedCount++;
+        }
+      }
+    }
+
+    const percentage = daysPassed > 0 ? Math.round((completedCount / daysPassed) * 100) : 0;
+    return { percentage, completed: completedCount, total: daysPassed };
+  }
+
+  getHabitsForHeatmap() {
+    return this.stats?.habits || [];
+  }
+
+  getDaysArray(): number[] {
+    const days: number[] = [];
+    const daysInMonth = this.getDaysInMonth();
+    for (let day = 1; day <= daysInMonth; day++) {
+      days.push(day);
+    }
+    return days;
+  }
+}

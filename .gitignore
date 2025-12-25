@@ -37,10 +37,12 @@ instance/
 # Logs
 *.log
 
-# Node (if you add frontend build)
+# Node / Frontend
 node_modules/
 dist/
 build/
+frontend/dist/
+frontend/node_modules/
 
 # Testing
 .pytest_cache/

@@ -1,0 +1,69 @@
+<!-- Loading state -->
+<div *ngIf="authCheckInProgress" class="loading-container">
+  <div class="loading-spinner">Loading...</div>
+</div>
+
+<!-- Authenticated view -->
+<div class="container" *ngIf="isAuthenticated && !authCheckInProgress">
+  <header>
+    <div>
+      <h1 class="motivational-text">I'm choosing <span class="highlight">CONSISTENCY</span> over excuses.</h1>
+      <div class="user-actions">
+        <div class="user-dropdown" id="userDropdown" [class.active]="dropdownOpen">
+          <button class="user-dropdown-trigger" id="userDropdownTrigger" (click)="toggleDropdown($event)">
+            <span id="user-info">{{ (currentUser$ | async)?.username }}</span>
+            <span class="dropdown-arrow">▲</span>
+          </button>
+          <div class="user-dropdown-menu">
+            <button class="dropdown-item" id="sync-status" (click)="syncData(true)" title="Click to sync">
+              <span [class.syncing]="syncStatus === 'syncing'">↻</span>
+              <span class="sync-text" id="sync-text">
+                {{ syncStatus === 'syncing' ? 'Syncing...' : syncStatus === 'error' ? 'Sync failed' : 'Synced' }}
+              </span>
+            </button>
+            <div class="dropdown-divider"></div>
+            <button class="dropdown-item logout" (click)="logout()" title="Logout">
+              <span>→</span>
+              <span>Logout</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button 
+      class="tab-btn" 
+      [class.active]="currentTab === 'tracker'"
+      (click)="navigateTo('tracker')">
+      Daily Tracker
+    </button>
+    <button 
+      class="tab-btn" 
+      [class.active]="currentTab === 'dashboard'"
+      (click)="navigateTo('dashboard')">
+      Dashboard
+    </button>
+    <button 
+      class="tab-btn" 
+      [class.active]="currentTab === 'settings'"
+      (click)="navigateTo('settings')">
+      Settings
+    </button>
+  </div>
+
+  <router-outlet></router-outlet>
+  
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
+  
+  <!-- Pull to Refresh Indicator -->
+  <div id="pull-refresh" class="pull-refresh">
+    <div class="pull-refresh-icon">⬇️</div>
+    <div class="pull-refresh-text">Pull to refresh</div>
+  </div>
+</div>
+
+<!-- Unauthenticated view (login/signup) -->
+<router-outlet *ngIf="!isAuthenticated && !authCheckInProgress"></router-outlet>

@@ -1,0 +1,149 @@
+<div class="tab-content" style="display: block; overflow-y: auto; overflow-x: hidden;">
+  <div class="month-selector">
+    <button class="btn-primary" (click)="openAddModal()">+ Add New Habit</button>
+    <div class="month-selector-center">
+      <button 
+        class="month-btn" 
+        (click)="previousMonth()" 
+        [disabled]="!canGoPrevious()"
+        [style.opacity]="canGoPrevious() ? '1' : '0.5'"
+        [style.cursor]="canGoPrevious() ? 'pointer' : 'not-allowed'"
+        title="Previous month">
+        ←
+      </button>
+      <h2>{{ getCurrentMonthYear() }}</h2>
+      <button 
+        class="month-btn" 
+        (click)="nextMonth()" 
+        title="Next month">
+        →
+      </button>
+    </div>
+    <div class="month-selector-spacer"></div>
+  </div>
+  
+  <div class="loading-overlay" [class.active]="isLoading">
+    <div class="spinner"></div>
+    <p>Loading habits...</p>
+  </div>
+  
+  <div class="table-container">
+    <table id="habit-table">
+      <thead>
+        <tr>
+          <th class="habit-col">DAILY HABITS</th>
+          <th *ngFor="let week of getWeekGroups()" class="week-header" [attr.colspan]="week.days.length">
+            <span class="week-label">WEEK {{ getWeekGroups().indexOf(week) + 1 }}</span>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngIf="habits.length === 0">
+          <td colspan="100%" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+            No habits yet. Click "Add New Habit" to get started!
+          </td>
+        </tr>
+        <tr *ngFor="let habit of habits">
+          <td class="habit-name">
+            <div class="habit-name-content">
+              <div class="habit-actions-inline" *ngIf="!isEditingInline(habit.id)">
+                <button class="btn-icon" (click)="editHabitInline(habit.id)" title="Edit habit">
+                  ✏️
+                </button>
+                <button class="btn-icon" (click)="deleteHabit(habit.id)" title="Delete habit">
+                  🗑️
+                </button>
+              </div>
+              <span class="habit-emoji">{{ habit.emoji || '✅' }}</span>
+              <span *ngIf="!isEditingInline(habit.id)" class="habit-name-text" [attr.data-habit-id]="habit.id">{{ habit.name }}</span>
+              <input
+                *ngIf="isEditingInline(habit.id)"
+                type="text"
+                class="inline-edit-input"
+                [value]="getEditingName(habit.id)"
+                [attr.data-habit-id]="habit.id"
+                data-field="name"
+                (input)="onInlineNameChange(habit.id, $any($event.target).value)"
+                (blur)="saveInlineEdit(habit.id)"
+                (keydown)="onInlineKeyDown(habit.id, $event, 'name')"
+              />
+            </div>
+          </td>
+          <ng-container *ngFor="let week of getWeekGroups()">
+            <td 
+              *ngFor="let day of week.days" 
+              [ngClass]="getDayClass(habit.id, day)"
+              class="day-cell">
+              <div class="day-container">
+                <div class="day-date">{{ day }}</div>
+                <input
+                  type="checkbox"
+                  class="day-checkbox"
+                  [checked]="isDayCompleted(habit.id, day)"
+                  [disabled]="isDayDisabled(habit.id, day)"
+                  [title]="getDayTitle(habit.id, day)"
+                  (change)="onDayCheckboxChange(habit.id, day, $any($event.target))"
+                />
+              </div>
+            </td>
+          </ng-container>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add Habit Modal -->
+<div class="modal" [style.display]="showAddModal ? 'block' : 'none'" (click)="closeModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <span class="close" (click)="closeModal()">&times;</span>
+    <h2>{{ editingHabitId ? 'Edit Habit' : 'Add New Habit' }}</h2>
+    <form (ngSubmit)="saveHabit()" #habitFormRef="ngForm">
+      <div class="form-group">
+        <label>Habit Name</label>
+        <input type="text" [(ngModel)]="habitForm.name" name="name" required>
+      </div>
+      <div class="form-group">
+        <label>Emoji</label>
+        <div class="emoji-picker-container">
+          <input type="text" [(ngModel)]="habitForm.emoji" name="emoji" placeholder="✅" maxlength="2" class="emoji-input">
+          <div class="emoji-picker">
+            <div class="emoji-grid">
+              <button 
+                type="button" 
+                *ngFor="let emoji of commonEmojis" 
+                class="emoji-btn"
+                [class.selected]="habitForm.emoji === emoji"
+                (click)="selectEmoji(emoji)"
+                [title]="emoji">
+                {{ emoji }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select [(ngModel)]="habitForm.category" name="category" (change)="habitForm.customCategory = ''">
+          <option value="Fitness">Fitness</option>
+          <option value="Health">Health</option>
+          <option value="Productivity">Productivity</option>
+          <option value="Study">Study</option>
+          <option value="Money">Money</option>
+          <option value="Social">Social</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="form-group" *ngIf="habitForm.category === 'Other'">
+        <label>Custom Category</label>
+        <input 
+          type="text" 
+          [(ngModel)]="habitForm.customCategory" 
+          name="customCategory" 
+          placeholder="Enter custom category name"
+          maxlength="50">
+      </div>
+      <button type="submit" class="btn-primary">{{ editingHabitId ? 'Update Habit' : 'Add Habit' }}</button>
+    </form>
+  </div>
+</div>
