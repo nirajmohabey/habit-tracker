@@ -21,9 +21,45 @@
               [(ngModel)]="notificationsEnabled"
               (change)="onNotificationsChange()"
               id="notifications-enabled">
-            <span>Enable notifications</span>
+            <span>Enable browser notifications</span>
           </label>
-          <p class="setting-desc">Get reminders to track your habits</p>
+          <p class="setting-desc">Get browser reminders to track your habits</p>
+        </div>
+        <div class="setting-item">
+          <label>
+            <input 
+              type="checkbox" 
+              [(ngModel)]="emailNotificationsEnabled"
+              (change)="onEmailNotificationsChange()"
+              id="email-notifications-enabled">
+            <span>Enable email notifications</span>
+          </label>
+          <p class="setting-desc">Receive personalized email reminders and summaries</p>
+        </div>
+        <div class="setting-item" *ngIf="emailNotificationsEnabled">
+          <label>
+            <span>Notification time</span>
+            <input 
+              type="time" 
+              [(ngModel)]="notificationTime"
+              (change)="onNotificationTimeChange()"
+              id="notification-time">
+          </label>
+          <p class="setting-desc">Time to receive reminders</p>
+        </div>
+        <div class="setting-item" *ngIf="emailNotificationsEnabled">
+          <label>
+            <span>Notification frequency</span>
+            <select 
+              [(ngModel)]="notificationFrequency"
+              (change)="onNotificationFrequencyChange()"
+              id="notification-frequency">
+              <option value="daily">Daily reminders</option>
+              <option value="weekly">Weekly summaries</option>
+              <option value="both">Both (daily + weekly)</option>
+            </select>
+          </label>
+          <p class="setting-desc">Choose how often you want to receive emails</p>
         </div>
         <div class="setting-item">
           <label>

@@ -6,6 +6,7 @@ import { ApiService, Habit, DailyLogs } from '../../services/api';
 import { ToastService } from '../../services/toast.service';
 import { AuthService } from '../../services/auth';
 import { AutoMarkService } from '../../services/auto-mark.service';
+import { HabitUpdateService } from '../../services/habit-update.service';
 import { Subscription } from 'rxjs';
 
 interface WeekGroup {
@@ -59,7 +60,8 @@ export class DailyTracker implements OnInit, OnDestroy {
     private authService: AuthService,
     private router: Router,
     private cdr: ChangeDetectorRef,
-    private autoMarkService: AutoMarkService
+    private autoMarkService: AutoMarkService,
+    private habitUpdateService: HabitUpdateService
   ) {}
 
   ngOnInit() {
@@ -121,9 +123,6 @@ export class DailyTracker implements OnInit, OnDestroy {
       // Show data immediately after habits are loaded
       this.cdr.detectChanges();
       
-      // Show data immediately after habits are loaded
-      this.cdr.detectChanges();
-      
       // Load daily logs first
       await this.loadDailyLogs();
       
@@ -178,37 +177,21 @@ export class DailyTracker implements OnInit, OnDestroy {
     const savedAutoMark = localStorage.getItem('autoMarkMissed');
     const autoMarkEnabled = savedAutoMark === null || savedAutoMark === 'true';
     
-    console.log('Auto-mark check:', {
-      autoMarkEnabled,
-      viewingYear,
-      viewingMonth: viewingMonth + 1,
-      today: today.toISOString(),
-      viewingDate: viewingDate.toISOString()
-    });
-    
     if (!autoMarkEnabled) {
-      console.log('Auto-mark is disabled');
-      return; // Auto-mark is disabled
+      return;
     }
     
-    // Check if the viewing month is in the past or is the current month
     const isPastMonth = viewingDate < today;
     const isCurrentMonth = viewingYear === today.getFullYear() && viewingMonth === today.getMonth();
     
-    console.log('Date checks:', { isPastMonth, isCurrentMonth });
-    
-    // Run auto-mark for past months OR current month (which has past days)
     if (isPastMonth || isCurrentMonth) {
       if (showFeedback) {
-        // Show loading and feedback when manually triggered
         this.isLoading = true;
         this.cdr.detectChanges();
       }
       
       try {
-        console.log(`Auto-marking missed days for ${viewingYear}-${viewingMonth + 1}`);
         const result = await this.autoMarkMissedDays(viewingYear, viewingMonth);
-        console.log('Auto-mark completed, result:', result);
         
         // Reload logs after auto-mark completes (only if feedback is requested or result has marked days)
         if (showFeedback || (result && result.marked_count > 0)) {
@@ -234,13 +217,9 @@ export class DailyTracker implements OnInit, OnDestroy {
           this.isLoading = false;
           this.cdr.detectChanges();
         }
-      }
-    } else if (showFeedback) {
-      // Future month - no past days to mark
-      console.log('Future month, no past days to mark');
+        }
+      } else if (showFeedback) {
       this.toastService.info('No past days', 'There are no past days to mark in this month');
-    } else {
-      console.log('Not running auto-mark - future month');
     }
   }
 
@@ -449,34 +428,41 @@ export class DailyTracker implements OnInit, OnDestroy {
       return;
     }
 
+    // Optimistically update UI immediately (before API call)
+    if (!this.dailyLogs[dateStr]) {
+      this.dailyLogs[dateStr] = {};
+    }
+    const previousState = this.dailyLogs[dateStr][habitId];
+    this.dailyLogs[dateStr][habitId] = completed;
+    this.cdr.detectChanges(); // Force immediate UI update
+
     try {
+      // Make API call in background
       await this.apiService.toggleLog(habitId, dateStr, completed).toPromise();
       
-      // Update local state
-      if (!this.dailyLogs[dateStr]) {
-        this.dailyLogs[dateStr] = {};
-      }
-      this.dailyLogs[dateStr][habitId] = completed;
-
       const habit = this.habits.find(h => h.id === habitId);
       if (completed && habit) {
         this.toastService.success('Habit Completed!', `${habit.name} marked as done`);
       }
       
-      // Update dashboard stats if on dashboard route
-      if (this.router.url.includes('/dashboard')) {
-        // Dashboard component will reload when navigated to
-        // We could emit an event here if needed, but routing handles it
-      }
+      // Notify other components (like dashboard) that a habit was toggled
+      this.habitUpdateService.notifyHabitToggled();
     } catch (error: any) {
       console.error('Error toggling habit log:', error);
+      
+      // Revert optimistic update on error
+      if (previousState !== undefined) {
+        this.dailyLogs[dateStr][habitId] = previousState;
+      } else {
+        delete this.dailyLogs[dateStr][habitId];
+      }
+      this.cdr.detectChanges();
+      
       if (error.status === 403) {
         this.toastService.error('Cannot Change Past Day', error.error?.error || 'Past days marked as missed are locked');
       } else {
         this.toastService.error('Error', 'Failed to update habit');
       }
-      await this.loadDailyLogs();
-      this.cdr.detectChanges();
     }
   }
 
@@ -484,27 +470,11 @@ export class DailyTracker implements OnInit, OnDestroy {
     try {
       // month is 0-11 from JavaScript Date, convert to 1-12 for backend
       const backendMonth = month + 1;
-      console.log(`Calling autoMarkMissedDays API for ${year}-${backendMonth} (JS month: ${month})`);
-      
       const result = await this.apiService.autoMarkMissedDays(year, backendMonth).toPromise();
-      console.log('Auto-mark API response:', result);
-      
-      if (result && result.marked_count > 0) {
-        console.log(`✅ Successfully marked ${result.marked_count} missed days`);
-      } else if (result && result.marked_count === 0) {
-        console.log('ℹ️ No days needed to be marked (all already marked or no past days)');
-      } else {
-        console.warn('⚠️ Unexpected result from auto-mark API:', result);
-      }
       
       return result;
     } catch (error: any) {
-      console.error('❌ Error in autoMarkMissedDays:', error);
-      console.error('Error details:', {
-        status: error?.status,
-        message: error?.message,
-        error: error?.error
-      });
+      console.error('Error in autoMarkMissedDays:', error);
       throw error; // Re-throw so calling function can handle it
     }
   }

@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { ApiService, Stats, BadgesResponse, InsightsResponse, DailyLogs } from '../../services/api';
 import { ToastService } from '../../services/toast.service';
+import { HabitUpdateService } from '../../services/habit-update.service';
+import { Subscription } from 'rxjs';
 
 declare var Chart: any;
 
@@ -23,16 +25,24 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
   heatmapData: DailyLogs = {};
   currentDate = new Date();
   categoryChart: any = null;
+  private habitUpdateSubscription?: Subscription;
 
   constructor(
     private apiService: ApiService,
     private toastService: ToastService,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private habitUpdateService: HabitUpdateService
   ) {}
 
   ngOnInit() {
     this.loadDashboard();
+    
+    // Subscribe to habit toggle events to refresh heatmap
+    this.habitUpdateSubscription = this.habitUpdateService.habitToggled$.subscribe(() => {
+      this.loadHeatmap();
+      this.loadStats(); // Also refresh stats
+    });
   }
 
   ngAfterViewInit() {
@@ -42,6 +52,9 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
   ngOnDestroy() {
     if (this.categoryChart) {
       this.categoryChart.destroy();
+    }
+    if (this.habitUpdateSubscription) {
+      this.habitUpdateSubscription.unsubscribe();
     }
   }
 
@@ -115,6 +128,7 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
 
     try {
       this.heatmapData = await this.apiService.getDailyLogs(startDate, endDate).toPromise() || {};
+      this.cdr.detectChanges(); // Force UI update
     } catch (error) {
       console.error('Error loading heatmap:', error);
     }
@@ -205,19 +219,34 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
     const dateStr = this.getDateString(day);
     const classes: string[] = ['heatmap-day'];
 
+    const year = this.currentDate.getFullYear();
+    const month = this.currentDate.getMonth();
+    const dayDate = new Date(year, month, day);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const isPastDay = dayDate < today;
+    const isToday = dayDate.getTime() === today.getTime();
+    const isFutureDay = dayDate > today;
+
     if (this.heatmapData[dateStr] && this.heatmapData[dateStr][habitId] === true) {
+      // Completed
       classes.push('heatmap-completed');
     } else if (this.heatmapData[dateStr] && this.heatmapData[dateStr][habitId] === false) {
-      classes.push('heatmap-missed');
-    } else {
-      const year = this.currentDate.getFullYear();
-      const month = this.currentDate.getMonth();
-      const dayDate = new Date(year, month, day);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (dayDate < today) {
+      // Explicitly marked as false
+      if (isPastDay) {
+        // Past day marked as missed
         classes.push('heatmap-missed');
       } else {
+        // Today or future day unmarked - show as empty (not tracked yet)
+        classes.push('heatmap-empty');
+      }
+    } else {
+      // No log entry
+      if (isPastDay) {
+        // Past day with no log - missed
+        classes.push('heatmap-missed');
+      } else {
+        // Today or future day with no log - empty
         classes.push('heatmap-empty');
       }
     }

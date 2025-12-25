@@ -38,7 +38,7 @@ A full-stack habit tracking application built with Angular 21 frontend and Flask
 
 5. **Seed Database with Demo User** (Recommended for testing)
    ```bash
-   python seed_database.py
+   python scripts/seed_database.py
    ```
    This creates a demo user with sample habits and 30 days of sample data:
    - **Username:** `demo`
@@ -134,6 +134,25 @@ Environment variables (optional):
 - `DATABASE_URL`: PostgreSQL connection string (uses SQLite if not set)
 - `SESSION_COOKIE_SECURE`: Set to `true` for HTTPS (default: `false` for localhost)
 - `CORS_ORIGINS`: Comma-separated list of allowed origins (default: localhost URLs)
+
+**Email Configuration (for sending emails to users):**
+> **Important:** These are YOUR application's email service credentials, NOT user credentials!
+> Your app uses ONE email service account to send emails TO all users.
+> Users only provide their email address (where to send), not their email password.
+> This is standard practice - like how GitHub, Facebook, etc. send emails from their service.
+
+- `MAIL_SERVER`: SMTP server (default: smtp.gmail.com)
+- `MAIL_PORT`: SMTP port (default: 587)
+- `MAIL_USE_TLS`: Use TLS (default: true)
+- `MAIL_USERNAME`: **YOUR** email service account username (e.g., your-email@gmail.com)
+- `MAIL_PASSWORD`: **YOUR** email service password or app password
+- `MAIL_DEFAULT_SENDER`: Default sender email (default: noreply@habittracker.com)
+- `FRONTEND_URL`: Frontend URL for password reset links (default: http://localhost:4200)
+
+**Example:** If you use Gmail, you would set:
+- `MAIL_USERNAME=yourapp@gmail.com` (your Gmail account)
+- `MAIL_PASSWORD=xxxx xxxx xxxx xxxx` (Gmail App Password)
+- All emails sent by your app will come FROM this account TO your users
 
 ### Frontend Configuration
 

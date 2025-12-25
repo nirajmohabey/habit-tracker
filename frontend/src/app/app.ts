@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { AuthService, User } from './services/auth';
 import { ApiService } from './services/api';
 import { ToastService } from './services/toast.service';
+import { BrowserNotificationService } from './services/browser-notification.service';
 import { Observable } from 'rxjs';
 import { filter } from 'rxjs/operators';
 
@@ -29,7 +30,8 @@ export class App implements OnInit, OnDestroy {
     public authService: AuthService,
     private router: Router,
     private apiService: ApiService,
-    private toastService: ToastService
+    private toastService: ToastService,
+    private browserNotificationService: BrowserNotificationService
   ) {
     // Initialize currentUser$ after constructor
     this.currentUser$ = this.authService.currentUser$;
@@ -55,13 +57,19 @@ export class App implements OnInit, OnDestroy {
         }, 100); // Reduced to 100ms
         this.setupRealTimeSync();
         this.setupPullToRefresh();
+        // Start browser notification scheduler
+        this.browserNotificationService.startNotificationScheduler();
+      }
+      
+      // Stop notifications if user logs out
+      if (!this.isAuthenticated && wasAuthenticated) {
+        this.browserNotificationService.stopNotificationScheduler();
       }
       
       // If user becomes unauthenticated while on protected route, redirect
       if (!this.isAuthenticated && wasAuthenticated) {
         const currentUrl = this.router.url;
         if (currentUrl !== '/login' && currentUrl !== '/signup') {
-          console.log('User logged out, redirecting to login');
           this.router.navigate(['/login']);
         }
       }
@@ -89,6 +97,8 @@ export class App implements OnInit, OnDestroy {
     if (this.syncInterval) {
       clearInterval(this.syncInterval);
     }
+    // Stop notification scheduler
+    this.browserNotificationService.stopNotificationScheduler();
   }
 
   private applyThemeOnInit() {

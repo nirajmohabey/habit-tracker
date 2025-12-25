@@ -32,8 +32,8 @@
       <thead>
         <tr>
           <th class="habit-col">DAILY HABITS</th>
-          <th *ngFor="let week of getWeekGroups()" class="week-header" [attr.colspan]="week.days.length">
-            <span class="week-label">WEEK {{ getWeekGroups().indexOf(week) + 1 }}</span>
+          <th *ngFor="let week of getWeekGroups(); let weekIndex = index" class="week-header" [attr.colspan]="week.days.length">
+            <span class="week-label">WEEK {{ weekIndex + 1 }}</span>
           </th>
         </tr>
       </thead>

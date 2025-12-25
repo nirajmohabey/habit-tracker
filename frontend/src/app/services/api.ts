@@ -173,4 +173,17 @@ export class ApiService {
   getInsights(): Observable<InsightsResponse> {
     return this.http.get<InsightsResponse>(`${API_URL}/insights`, this.httpOptions);
   }
+
+  // Notification preferences
+  getNotificationPreferences(): Observable<any> {
+    return this.http.get(`${API_URL}/notification-preferences`, this.httpOptions);
+  }
+
+  updateNotificationPreferences(preferences: {
+    email_notifications_enabled?: boolean;
+    notification_time?: string;
+    notification_frequency?: 'daily' | 'weekly' | 'both';
+  }): Observable<any> {
+    return this.http.put(`${API_URL}/notification-preferences`, preferences, this.httpOptions);
+  }
 }

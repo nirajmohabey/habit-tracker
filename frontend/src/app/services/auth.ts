@@ -42,7 +42,6 @@ export class AuthService {
         }
       },
       error: (err) => {
-        // Log error for debugging
         console.error('Auth check failed:', err);
         // Set user to null on error (not authenticated)
         this.currentUserSubject.next(null);

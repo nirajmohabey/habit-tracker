@@ -6,6 +6,7 @@ import { ApiService } from '../../services/api';
 import { AuthService } from '../../services/auth';
 import { ToastService } from '../../services/toast.service';
 import { AutoMarkService } from '../../services/auto-mark.service';
+import { BrowserNotificationService } from '../../services/browser-notification.service';
 import { filter, take } from 'rxjs/operators';
 
 @Component({
@@ -20,6 +21,11 @@ export class Settings implements OnInit {
   notificationsEnabled = false;
   theme = 'dark';
   
+  // Email notification preferences
+  emailNotificationsEnabled = true;
+  notificationTime = '09:00';
+  notificationFrequency: 'daily' | 'weekly' | 'both' = 'daily';
+  
   accountInfo: {
     username?: string;
     email?: string;
@@ -32,6 +38,7 @@ export class Settings implements OnInit {
     private toastService: ToastService,
     private router: Router,
     private autoMarkService: AutoMarkService,
+    private browserNotificationService: BrowserNotificationService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -39,6 +46,8 @@ export class Settings implements OnInit {
     this.loadSettings();
     // Load account info immediately - first from authService, then from API
     this.loadAccountInfo();
+    // Load notification preferences from backend
+    this.loadNotificationPreferences();
     
     // Also subscribe to authService to update when user logs in
     this.authService.currentUser$.subscribe(user => {
@@ -52,6 +61,8 @@ export class Settings implements OnInit {
         }
         // Always fetch full info including created_at when user is available
         this.loadAccountInfo();
+        // Reload notification preferences when user changes
+        this.loadNotificationPreferences();
       }
     });
   }
@@ -100,25 +111,14 @@ export class Settings implements OnInit {
     try {
       const response = await this.apiService.checkAuth().toPromise();
       
-      console.log('Settings - Full API response:', response); // Debug log
-      
       if (response && response.authenticated && response.user) {
-        // Try multiple sources for created_at - prioritize user.created_at, then root created_at, then signup_date
         const created_at = response.user.created_at || response.created_at || response.signup_date || null;
-        
-        console.log('Settings - created_at from response.user.created_at:', response.user.created_at); // Debug log
-        console.log('Settings - created_at from response.created_at:', response.created_at); // Debug log
-        console.log('Settings - created_at from response.signup_date:', response.signup_date); // Debug log
-        console.log('Settings - Final created_at value:', created_at); // Debug log
         
         this.accountInfo = {
           username: response.user.username || currentUser?.username || 'N/A',
           email: response.user.email || currentUser?.email || 'N/A',
           created_at: created_at
         };
-        
-        console.log('Settings - Account info after setting:', this.accountInfo); // Debug log
-        console.log('Settings - Formatted date:', this.getFormattedDate(created_at)); // Debug log
         
         // Force change detection to update the view
         this.cdr.detectChanges();
@@ -199,7 +199,21 @@ export class Settings implements OnInit {
     }
   }
 
-  onNotificationsChange() {
+  async loadNotificationPreferences() {
+    try {
+      const response = await this.apiService.getNotificationPreferences().toPromise();
+      if (response) {
+        this.emailNotificationsEnabled = response.email_notifications_enabled ?? true;
+        this.notificationTime = response.notification_time || '09:00';
+        this.notificationFrequency = response.notification_frequency || 'daily';
+      }
+    } catch (error: any) {
+      console.error('Error loading notification preferences:', error);
+      // Use defaults if API fails
+    }
+  }
+
+  async onNotificationsChange() {
     localStorage.setItem('notificationsEnabled', String(this.notificationsEnabled));
     // Haptic feedback on mobile
     if (navigator.vibrate) {
@@ -212,14 +226,84 @@ export class Settings implements OnInit {
     );
     
     // Request notification permission if enabled
-    if (this.notificationsEnabled && 'Notification' in window) {
-      Notification.requestPermission().then(permission => {
-        if (permission === 'granted') {
-          this.toastService.success('Notifications Enabled', 'You will receive reminders to track your habits');
-        } else {
-          this.toastService.warning('Permission Denied', 'Please enable notifications in your browser settings');
-        }
-      });
+    if (this.notificationsEnabled) {
+      const granted = await this.browserNotificationService.requestPermission();
+      if (granted) {
+        this.toastService.success(
+          'Notifications Enabled', 
+          'You will receive reminders at your preferred time to track your habits'
+        );
+        // Start the notification scheduler
+        this.browserNotificationService.startNotificationScheduler();
+      } else {
+        this.toastService.warning('Permission Denied', 'Please enable notifications in your browser settings');
+        // Stop scheduler if permission denied
+        this.browserNotificationService.stopNotificationScheduler();
+      }
+    } else {
+      // Stop scheduler if notifications disabled
+      this.browserNotificationService.stopNotificationScheduler();
+    }
+  }
+
+  async onEmailNotificationsChange() {
+    try {
+      await this.apiService.updateNotificationPreferences({
+        email_notifications_enabled: this.emailNotificationsEnabled
+      }).toPromise();
+      
+      // Haptic feedback on mobile
+      if (navigator.vibrate) {
+        navigator.vibrate(10);
+      }
+      
+      this.toastService.success(
+        'Email Notifications Updated',
+        `Email notifications are now ${this.emailNotificationsEnabled ? 'enabled' : 'disabled'}`
+      );
+    } catch (error: any) {
+      console.error('Error updating email notifications:', error);
+      this.toastService.error('Error', 'Failed to update email notification preferences');
+      // Revert on error
+      this.emailNotificationsEnabled = !this.emailNotificationsEnabled;
+    }
+  }
+
+  async onNotificationTimeChange() {
+    try {
+      await this.apiService.updateNotificationPreferences({
+        notification_time: this.notificationTime
+      }).toPromise();
+      
+      // Haptic feedback on mobile
+      if (navigator.vibrate) {
+        navigator.vibrate(10);
+      }
+      
+      this.toastService.success('Notification Time Updated', `Emails will be sent at ${this.notificationTime}`);
+    } catch (error: any) {
+      console.error('Error updating notification time:', error);
+      this.toastService.error('Error', 'Failed to update notification time');
+    }
+  }
+
+  async onNotificationFrequencyChange() {
+    try {
+      await this.apiService.updateNotificationPreferences({
+        notification_frequency: this.notificationFrequency
+      }).toPromise();
+      
+      // Haptic feedback on mobile
+      if (navigator.vibrate) {
+        navigator.vibrate(10);
+      }
+      
+      const frequencyText = this.notificationFrequency === 'daily' ? 'Daily reminders' :
+                           this.notificationFrequency === 'weekly' ? 'Weekly summaries' : 'Daily reminders & weekly summaries';
+      this.toastService.success('Notification Frequency Updated', frequencyText);
+    } catch (error: any) {
+      console.error('Error updating notification frequency:', error);
+      this.toastService.error('Error', 'Failed to update notification frequency');
     }
   }
 

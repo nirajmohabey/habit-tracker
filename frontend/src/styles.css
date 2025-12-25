@@ -199,7 +199,6 @@ header .user-actions {
 }
 
 /* ================= SYNC / LOGOUT (NORMALIZED) ================= */
-/* Removed display: contents to fix layout - items now use normal flex layout */
 
 .sync-text {
     display: inline;
@@ -354,11 +353,6 @@ header .user-actions {
 .table-container::-webkit-scrollbar {
     display: none; /* Chrome, Safari, Opera */
 }
-    background: var(--bg-card);
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 20px;
-}
 
 table {
     width: 100%;
@@ -507,15 +501,39 @@ td {
 }
 
 .day-checkbox {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     cursor: pointer;
-    accent-color: var(--accent-purple);
     margin: 0;
+    border-radius: 4px;
+    border: 2px solid var(--border-color);
+    background-color: transparent;
+    appearance: none;
+    -webkit-appearance: none;
+    position: relative;
+    transition: all 0.2s ease;
 }
 
 .day-checkbox:checked {
-    background-color: var(--accent-purple);
+    background-color: #22c55e;
+    border-color: #22c55e;
+}
+
+.day-checkbox:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.day-checkbox:hover:not(:disabled) {
+    border-color: #22c55e;
+    transform: scale(1.05);
 }
 
 .day-checkbox:disabled {
@@ -600,11 +618,12 @@ td {
 }
 
 .week-label {
-    display: block;
+    display: inline;
     color: var(--accent-purple);
     font-weight: 700;
     letter-spacing: 0.5px;
     text-transform: uppercase;
+    white-space: nowrap;
 }
 
 /* Dashboard */
@@ -1367,12 +1386,8 @@ canvas {
 }
 
 .day-checkbox:checked {
-    transform: scale(1.1);
-    box-shadow: 0 0 10px var(--accent-purple);
-}
-
-.day-checkbox:hover {
     transform: scale(1.05);
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
 }
 
 /* Button Hover Effects */

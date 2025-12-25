@@ -47,8 +47,6 @@ export class ForgotPasswordComponent {
       requestBody.username = input;
     }
     
-    console.log('Sending forgot password request to:', `${AUTH_URL}/forgot-password`, requestBody);
-    
     this.http.post(`${AUTH_URL}/forgot-password`, requestBody, { 
       withCredentials: true,
       headers: {
@@ -56,7 +54,6 @@ export class ForgotPasswordComponent {
       }
     }).subscribe({
       next: (response: any) => {
-        console.log('Forgot password response:', response);
         this.isLoading = false;
         this.success = true;
       },
