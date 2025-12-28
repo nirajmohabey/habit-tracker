@@ -63,10 +63,8 @@ export class AuthService {
             email: response.user.email
           };
           this.currentUserSubject.next(user);
-          // Re-check auth to ensure session is established
-          setTimeout(() => {
-            this.checkAuth();
-          }, 100);
+          // No need to re-check auth immediately - we already have user from response
+          // Only check if session might not be established (rare case)
         }
       })
     );
@@ -101,10 +99,7 @@ export class AuthService {
             email: response.user.email
           };
           this.currentUserSubject.next(user);
-          // Re-check auth to ensure session is established
-          setTimeout(() => {
-            this.checkAuth();
-          }, 100);
+          // No need to re-check auth - we already have user from response
         }
       })
     );

@@ -36,19 +36,38 @@ A full-stack habit tracking application built with Angular 21 frontend and Flask
    # Or use curl: curl http://localhost:5000/api/migrate
    ```
 
-5. **Seed Database with Demo User** (Recommended for testing)
+5. **Seed Database with Test Data** (Choose one):
+
+   **Option A: Single Demo User** (Quick testing)
    ```bash
    python scripts/seed_database.py
    ```
-   This creates a demo user with sample habits and 30 days of sample data:
+   Creates a demo user with sample habits and 30 days of sample data:
    - **Username:** `demo`
    - **Password:** `demo123`
    - **Email:** `demo@example.com`
    
-   The demo user includes:
-   - 6 sample habits (Wake up at 7AM, No Snoozing, Drink 3L Water, Gym Workout, Study 1 Hour, Meditation)
-   - 30 days of sample habit logs (mix of completed and missed days)
-   - Ready to test all features immediately!
+   **Option B: 25 Test Users** (Thorough testing)
+   ```bash
+   python scripts/create_test_users.py
+   ```
+   
+   **To delete and recreate test users:**
+   ```bash
+   python scripts/delete_test_users.py
+   python scripts/create_test_users.py
+   ```
+   Creates 25 test users with varied data:
+   - **Usernames:** `testuser1` to `testuser25`
+   - **Password:** `test123` (same for all)
+   - **Emails:** `testuser1@example.com` to `testuser25@example.com`
+   
+   Each test user includes:
+   - 3-8 different habits (randomly selected)
+   - 40-90% completion rates (varied per habit)
+   - 60 days of habit tracking data
+   - Varied account creation dates (past 60 days)
+   - Perfect for testing scalability, performance, and features!
 
 ## 🏃 Running the Application
 

@@ -61,11 +61,17 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
   async loadDashboard() {
     this.isLoading = true;
     try {
+      // Load in parallel for faster performance
+      // Load heatmap and stats first (most important), then badges and insights
       await Promise.all([
-        this.loadStats(),
+        this.loadHeatmap(),
+        this.loadStats()
+      ]);
+      
+      // Load badges and insights in parallel (less critical, can load after)
+      await Promise.all([
         this.loadBadges(),
-        this.loadInsights(),
-        this.loadHeatmap()
+        this.loadInsights()
       ]);
     } catch (error) {
       console.error('Error loading dashboard:', error);
@@ -262,22 +268,23 @@ export class Dashboard implements OnInit, AfterViewInit, OnDestroy {
     const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
     let completedCount = 0;
-    let daysPassed = 0;
 
+    // Count completed days up to today (only count days that have passed)
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = this.getDateString(day);
       const cellDate = new Date(year, month, day);
 
+      // Only count days that have passed (up to today)
       if (cellDate <= todayDate) {
-        daysPassed++;
         if (this.heatmapData[dateStr] && this.heatmapData[dateStr][habitId] === true) {
           completedCount++;
         }
       }
     }
 
-    const percentage = daysPassed > 0 ? Math.round((completedCount / daysPassed) * 100) : 0;
-    return { percentage, completed: completedCount, total: daysPassed };
+    // Use total days in month as denominator (not just days passed)
+    const percentage = daysInMonth > 0 ? Math.round((completedCount / daysInMonth) * 100) : 0;
+    return { percentage, completed: completedCount, total: daysInMonth };
   }
 
   getHabitsForHeatmap() {

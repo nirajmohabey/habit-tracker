@@ -1841,7 +1841,7 @@ def get_insights():
                     'type': 'info',
                     'icon': '💡',
                     'message': f"Don't forget {recommended.emoji} {recommended.name} today - you've got this!"
-                })
+        })
         else:
             # Multiple habits pending - recommend the one with least progress
             pending_with_stats = []

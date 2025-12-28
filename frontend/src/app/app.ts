@@ -5,7 +5,7 @@ import { AuthService, User } from './services/auth';
 import { ApiService } from './services/api';
 import { ToastService } from './services/toast.service';
 import { BrowserNotificationService } from './services/browser-notification.service';
-import { Observable } from 'rxjs';
+import { Observable, Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 
 @Component({
@@ -25,6 +25,8 @@ export class App implements OnInit, OnDestroy {
   private syncInterval: any = null;
   private isSyncing = false;
   private manualSync = false; // Track if sync was manually triggered
+  private authSubscription?: Subscription;
+  private routerSubscription?: Subscription;
 
   constructor(
     public authService: AuthService,
@@ -45,7 +47,7 @@ export class App implements OnInit, OnDestroy {
     this.authService.checkAuth();
     
     // Subscribe to auth state
-    this.authService.currentUser$.subscribe(user => {
+    this.authSubscription = this.authService.currentUser$.subscribe(user => {
       const wasAuthenticated = this.isAuthenticated;
       this.isAuthenticated = user !== null;
       this.authCheckInProgress = false; // Auth check completed
@@ -83,7 +85,7 @@ export class App implements OnInit, OnDestroy {
     }, 1500); // Reduced to 1.5 seconds for faster loading
     
     // Watch route changes to update active tab
-    this.router.events.pipe(
+    this.routerSubscription = this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
     ).subscribe((event: any) => {
       const url = event.url;
@@ -96,6 +98,12 @@ export class App implements OnInit, OnDestroy {
   ngOnDestroy() {
     if (this.syncInterval) {
       clearInterval(this.syncInterval);
+    }
+    if (this.authSubscription) {
+      this.authSubscription.unsubscribe();
+    }
+    if (this.routerSubscription) {
+      this.routerSubscription.unsubscribe();
     }
     // Stop notification scheduler
     this.browserNotificationService.stopNotificationScheduler();
@@ -169,18 +177,27 @@ export class App implements OnInit, OnDestroy {
   async syncData(manual: boolean = false) {
     if (this.isSyncing) return;
     
-    this.manualSync = manual; // Track if this is a manual sync
+    // Debounce: Don't sync if last sync was less than 10 seconds ago (unless manual)
+    if (!manual) {
+      const lastSync = localStorage.getItem('lastSyncTime');
+      const now = Date.now();
+      if (lastSync && (now - parseInt(lastSync)) < 10000) {
+        return; // Skip if synced less than 10 seconds ago
+      }
+    }
+    
+    this.manualSync = manual;
     this.isSyncing = true;
     this.syncStatus = 'syncing';
     this.dropdownOpen = false;
     
     try {
       // Just update auth status - components will handle their own data reloading
-      // No need to navigate and cause full page reloads
       this.authService.checkAuth();
+      localStorage.setItem('lastSyncTime', Date.now().toString());
       
       this.syncStatus = 'synced';
-      // Only show toast on manual sync (user clicked sync button or pull-to-refresh)
+      // Only show toast on manual sync
       if (manual) {
         this.toastService.success('Synced', 'Your data has been updated');
       }
@@ -202,28 +219,33 @@ export class App implements OnInit, OnDestroy {
       clearInterval(this.syncInterval);
     }
 
-    // Sync every 30 seconds (reduced frequency to avoid too many requests)
+    // Sync every 5 minutes (reduced frequency significantly to avoid too many requests)
+    // Components will handle their own data loading, sync is just for auth status
     this.syncInterval = setInterval(() => {
       if (!this.isSyncing && this.isAuthenticated) {
         this.syncData(false); // Silent background sync
       }
-    }, 30000); // Changed from 10 seconds to 30 seconds
+    }, 300000); // 5 minutes instead of 30 seconds
   }
 
   @HostListener('window:visibilitychange')
   onVisibilityChange() {
+    // Only sync if tab was hidden for more than 5 minutes
+    // This prevents aggressive syncing on quick tab switches
     if (!document.hidden && !this.isSyncing && this.isAuthenticated) {
-      // Silent sync when tab becomes visible
-      this.syncData(false);
+      const lastSync = localStorage.getItem('lastSyncTime');
+      const now = Date.now();
+      if (!lastSync || (now - parseInt(lastSync)) > 300000) { // 5 minutes
+        this.syncData(false);
+        localStorage.setItem('lastSyncTime', now.toString());
+      }
     }
   }
 
   @HostListener('window:focus')
   onWindowFocus() {
-    if (!this.isSyncing && this.isAuthenticated) {
-      // Silent sync when window regains focus
-      this.syncData(false);
-    }
+    // Removed automatic sync on focus - too aggressive
+    // Users can manually sync if needed
   }
 
   setupPullToRefresh() {

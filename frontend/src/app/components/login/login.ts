@@ -30,23 +30,21 @@ export class LoginComponent {
     this.error = '';
     this.authService.login(this.username, this.password).subscribe({
       next: (response) => {
-        // Wait a moment for session to be established
-        setTimeout(() => {
-          // Verify auth before navigating
-          if (this.authService.isAuthenticated()) {
-            this.router.navigate(['/tracker']);
-          } else {
-            // If auth check fails, try one more time
-            this.authService.checkAuth();
-            setTimeout(() => {
-              if (this.authService.isAuthenticated()) {
-                this.router.navigate(['/tracker']);
-              } else {
-                this.error = 'Login successful but session not established. Please try again.';
-              }
-            }, 500);
-          }
-        }, 200);
+        // Response already contains user, authService has been updated
+        // Navigate immediately - session is established
+        if (response.user || this.authService.isAuthenticated()) {
+          this.router.navigate(['/tracker']);
+        } else {
+          // Fallback: check auth one more time
+          this.authService.checkAuth();
+          setTimeout(() => {
+            if (this.authService.isAuthenticated()) {
+              this.router.navigate(['/tracker']);
+            } else {
+              this.error = 'Login successful but session not established. Please try again.';
+            }
+          }, 300);
+        }
       },
       error: (err) => {
         this.error = err.error?.error || 'Login failed. Please check your credentials.';

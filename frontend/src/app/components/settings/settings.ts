@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -7,7 +7,9 @@ import { AuthService } from '../../services/auth';
 import { ToastService } from '../../services/toast.service';
 import { AutoMarkService } from '../../services/auto-mark.service';
 import { BrowserNotificationService } from '../../services/browser-notification.service';
+import { SyncService } from '../../services/sync.service';
 import { filter, take } from 'rxjs/operators';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-settings',
@@ -16,7 +18,7 @@ import { filter, take } from 'rxjs/operators';
   templateUrl: './settings.html',
   styleUrl: './settings.css',
 })
-export class Settings implements OnInit {
+export class Settings implements OnInit, OnDestroy {
   autoMarkMissed = true;
   notificationsEnabled = false;
   theme = 'dark';
@@ -31,6 +33,8 @@ export class Settings implements OnInit {
     email?: string;
     created_at?: string;
   } = {};
+  
+  private authSubscription?: Subscription;
 
   constructor(
     private apiService: ApiService,
@@ -39,6 +43,7 @@ export class Settings implements OnInit {
     private router: Router,
     private autoMarkService: AutoMarkService,
     private browserNotificationService: BrowserNotificationService,
+    private syncService: SyncService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -49,22 +54,33 @@ export class Settings implements OnInit {
     // Load notification preferences from backend
     this.loadNotificationPreferences();
     
-    // Also subscribe to authService to update when user logs in
-    this.authService.currentUser$.subscribe(user => {
+    // Subscribe to authService to update when user logs in (but debounce to avoid multiple calls)
+    this.authSubscription = this.authService.currentUser$.subscribe(user => {
       if (user) {
-        // Update immediately with available data
+        // Update immediately with available data (no API call needed)
         if (!this.accountInfo.username || this.accountInfo.username === 'N/A') {
           this.accountInfo = {
             username: user.username || 'N/A',
             email: user.email || 'N/A'
           };
+          this.cdr.detectChanges();
         }
-        // Always fetch full info including created_at when user is available
-        this.loadAccountInfo();
-        // Reload notification preferences when user changes
-        this.loadNotificationPreferences();
+        // Only fetch full info if created_at is missing (avoid redundant API calls)
+        if (!this.accountInfo.created_at || this.accountInfo.created_at === 'N/A') {
+          this.loadAccountInfo();
+        }
+        // Only reload notification preferences if not already loaded
+        if (!this.emailNotificationsEnabled && !this.notificationTime) {
+          this.loadNotificationPreferences();
+        }
       }
     });
+  }
+  
+  ngOnDestroy() {
+    if (this.authSubscription) {
+      this.authSubscription.unsubscribe();
+    }
   }
 
   loadSettings() {
@@ -105,20 +121,22 @@ export class Settings implements OnInit {
         username: currentUser.username || 'N/A',
         email: currentUser.email || 'N/A'
       };
+      this.cdr.detectChanges(); // Update UI immediately
     }
     
-    // Then fetch full account info from API (includes created_at)
-    try {
-      const response = await this.apiService.checkAuth().toPromise();
-      
-      if (response && response.authenticated && response.user) {
-        const created_at = response.user.created_at || response.created_at || response.signup_date || null;
+    // Only fetch from API if we don't have created_at yet (avoid redundant calls)
+    if (!this.accountInfo.created_at || this.accountInfo.created_at === 'N/A') {
+      try {
+        const response = await this.apiService.checkAuth().toPromise();
         
-        this.accountInfo = {
-          username: response.user.username || currentUser?.username || 'N/A',
-          email: response.user.email || currentUser?.email || 'N/A',
-          created_at: created_at
-        };
+        if (response && response.authenticated && response.user) {
+          const created_at = response.user.created_at || response.created_at || response.signup_date || null;
+          
+          this.accountInfo = {
+            username: response.user.username || currentUser?.username || 'N/A',
+            email: response.user.email || currentUser?.email || 'N/A',
+            created_at: created_at
+          };
         
         // Force change detection to update the view
         this.cdr.detectChanges();
@@ -152,6 +170,7 @@ export class Settings implements OnInit {
         this.toastService.error('Server Error', 'Please try again later');
       }
     }
+    }
   }
   
   private loadFromAuthService() {
@@ -183,6 +202,9 @@ export class Settings implements OnInit {
       'Preference Saved', 
       `Auto-mark missed days is now ${this.autoMarkMissed ? 'enabled' : 'disabled'}`
     );
+    
+    // Sync after preference change
+    this.syncService.syncAfterAction();
     
     // If enabled, trigger auto-mark immediately for current month if it's in the past
     if (this.autoMarkMissed) {
@@ -220,10 +242,13 @@ export class Settings implements OnInit {
       navigator.vibrate(10);
     }
     // Show feedback
-    this.toastService.success(
-      'Preference Saved', 
-      `Notifications are now ${this.notificationsEnabled ? 'enabled' : 'disabled'}`
-    );
+      this.toastService.success(
+        'Preference Saved', 
+        `Notifications are now ${this.notificationsEnabled ? 'enabled' : 'disabled'}`
+      );
+    
+    // Sync after preference change
+    this.syncService.syncAfterAction();
     
     // Request notification permission if enabled
     if (this.notificationsEnabled) {
@@ -261,6 +286,9 @@ export class Settings implements OnInit {
         'Email Notifications Updated',
         `Email notifications are now ${this.emailNotificationsEnabled ? 'enabled' : 'disabled'}`
       );
+      
+      // Sync after preference change
+      this.syncService.syncAfterAction();
     } catch (error: any) {
       console.error('Error updating email notifications:', error);
       this.toastService.error('Error', 'Failed to update email notification preferences');
@@ -281,6 +309,9 @@ export class Settings implements OnInit {
       }
       
       this.toastService.success('Notification Time Updated', `Emails will be sent at ${this.notificationTime}`);
+      
+      // Sync after preference change
+      this.syncService.syncAfterAction();
     } catch (error: any) {
       console.error('Error updating notification time:', error);
       this.toastService.error('Error', 'Failed to update notification time');
@@ -301,6 +332,9 @@ export class Settings implements OnInit {
       const frequencyText = this.notificationFrequency === 'daily' ? 'Daily reminders' :
                            this.notificationFrequency === 'weekly' ? 'Weekly summaries' : 'Daily reminders & weekly summaries';
       this.toastService.success('Notification Frequency Updated', frequencyText);
+      
+      // Sync after preference change
+      this.syncService.syncAfterAction();
     } catch (error: any) {
       console.error('Error updating notification frequency:', error);
       this.toastService.error('Error', 'Failed to update notification frequency');
@@ -322,6 +356,9 @@ export class Settings implements OnInit {
     }
     // Show feedback
     this.toastService.success('Theme Changed', `Theme set to ${this.theme === 'light' ? 'Light' : 'Dark'}`);
+    
+    // Sync after preference change
+    this.syncService.syncAfterAction();
   }
 
   applyTheme(theme: string) {

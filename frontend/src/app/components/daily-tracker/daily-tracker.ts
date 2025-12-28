@@ -7,6 +7,7 @@ import { ToastService } from '../../services/toast.service';
 import { AuthService } from '../../services/auth';
 import { AutoMarkService } from '../../services/auto-mark.service';
 import { HabitUpdateService } from '../../services/habit-update.service';
+import { SyncService } from '../../services/sync.service';
 import { Subscription } from 'rxjs';
 
 interface WeekGroup {
@@ -61,7 +62,8 @@ export class DailyTracker implements OnInit, OnDestroy {
     private router: Router,
     private cdr: ChangeDetectorRef,
     private autoMarkService: AutoMarkService,
-    private habitUpdateService: HabitUpdateService
+    private habitUpdateService: HabitUpdateService,
+    private syncService: SyncService
   ) {}
 
   ngOnInit() {
@@ -101,32 +103,33 @@ export class DailyTracker implements OnInit, OnDestroy {
         return;
       }
 
-      // Load habits and user start date in parallel for faster loading
-      const [habitsResponse, authResponse] = await Promise.all([
-        this.apiService.getHabits().toPromise().catch(() => []),
-        this.apiService.checkAuth().toPromise().catch(() => null)
-      ]);
+      // Load habits - authService already has user data, no need to call checkAuth again
+      this.habits = await this.apiService.getHabits().toPromise() || [];
       
-      this.habits = habitsResponse || [];
-      
-      // Load user start date from auth response
-      if (authResponse && authResponse.start_date) {
-        this.userStartDate = new Date(authResponse.start_date);
+      // Get user start date from authService if available, otherwise fetch
+      const currentUser = this.authService.getCurrentUser();
+      if (currentUser) {
+        // Try to get from authService first (already loaded)
+        const authData = await this.apiService.checkAuth().toPromise().catch(() => null);
+        if (authData && authData.start_date) {
+          this.userStartDate = new Date(authData.start_date);
+        }
       }
       
-      // Retry if no habits found (backend might be creating defaults) - but faster
+      // Only retry if no habits AND it's a new user (first time)
       if (this.habits.length === 0) {
-        await new Promise(resolve => setTimeout(resolve, 200)); // Reduced to 200ms
-        this.habits = await this.apiService.getHabits().toPromise() || [];
+        // Wait a bit for backend to create default habits
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const retryHabits = await this.apiService.getHabits().toPromise() || [];
+        if (retryHabits.length > 0) {
+          this.habits = retryHabits;
+        }
       }
       
-      // Show data immediately after habits are loaded
-      this.cdr.detectChanges();
-      
-      // Load daily logs first
+      // Load daily logs
       await this.loadDailyLogs();
       
-      // Show UI immediately
+      // Show UI after both habits and logs are loaded (single change detection)
       this.cdr.detectChanges();
       
       // Run auto-mark in background (non-blocking) after UI is shown
@@ -196,7 +199,10 @@ export class DailyTracker implements OnInit, OnDestroy {
         // Reload logs after auto-mark completes (only if feedback is requested or result has marked days)
         if (showFeedback || (result && result.marked_count > 0)) {
           await this.loadDailyLogs();
-          this.cdr.detectChanges();
+          // Only detect changes if feedback is requested or data changed
+          if (showFeedback || result?.marked_count > 0) {
+            this.cdr.detectChanges();
+          }
         }
         
         if (showFeedback) {
@@ -217,7 +223,7 @@ export class DailyTracker implements OnInit, OnDestroy {
           this.isLoading = false;
           this.cdr.detectChanges();
         }
-        }
+      }
       } else if (showFeedback) {
       this.toastService.info('No past days', 'There are no past days to mark in this month');
     }
@@ -447,6 +453,9 @@ export class DailyTracker implements OnInit, OnDestroy {
       
       // Notify other components (like dashboard) that a habit was toggled
       this.habitUpdateService.notifyHabitToggled();
+      
+      // Sync after successful action
+      this.syncService.syncAfterAction();
     } catch (error: any) {
       console.error('Error toggling habit log:', error);
       
@@ -531,6 +540,9 @@ export class DailyTracker implements OnInit, OnDestroy {
       this.closeModal();
       await this.loadHabits();
       this.cdr.detectChanges();
+      
+      // Sync after successful action
+      this.syncService.syncAfterAction();
     } catch (error) {
       console.error('Error saving habit:', error);
       this.toastService.error('Error', `Failed to ${this.editingHabitId ? 'update' : 'add'} habit`);
@@ -550,6 +562,9 @@ export class DailyTracker implements OnInit, OnDestroy {
       this.toastService.success('Habit Deleted', `${habitName} has been removed`);
       await this.loadHabits();
       this.cdr.detectChanges();
+      
+      // Sync after successful action
+      this.syncService.syncAfterAction();
     } catch (error: any) {
       console.error('Error deleting habit:', error);
       this.toastService.error('Error', error.error?.error || 'Failed to delete habit');
@@ -618,6 +633,9 @@ export class DailyTracker implements OnInit, OnDestroy {
       this.toastService.success('Habit Updated', `${newName} has been updated`);
       await this.loadHabits();
       this.cdr.detectChanges();
+      
+      // Sync after successful action
+      this.syncService.syncAfterAction();
     } catch (error: any) {
       console.error('Error updating habit inline:', error);
       this.toastService.error('Error', 'Failed to update habit');
